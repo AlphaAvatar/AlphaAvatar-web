@@ -37,30 +37,11 @@ function DemoSessionInner() {
 
       await session.start();
 
-      console.log("[AlphaAvatar demo] session.start() success");
-      console.log("[AlphaAvatar demo] room:", session.room);
-
-      try {
-        await session.room?.localParticipant.publishData(
-          new TextEncoder().encode(
-            JSON.stringify({
-              type: "lk.agent.update",
-              audio_input_enabled: true,
-              audio_output_enabled: true,
-              text_input_enabled: true,
-              text_output_enabled: true,
-            })
-          ),
-          {
-            reliable: true,
-            topic: "lk.agent.update",
-          }
-        );
-
-        console.log("[AlphaAvatar demo] sent lk.agent.update");
-      } catch (err) {
-        console.error("[AlphaAvatar demo] failed to send lk.agent.update:", err);
-      }
+      console.log("[AlphaAvatar demo] session.start() success", {
+        room: session.room?.name,
+        identity: session.room?.localParticipant?.identity,
+        state: session.room?.state,
+      });
 
       startedRef.current = true;
 
@@ -101,9 +82,6 @@ function DemoSessionInner() {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Key points:
-    // Next.js dev / React StrictMode will first mount -> cleanup -> mount.
-    // Using setTimeout can prevent the system from starting immediately during the first fake mount and then being disconnected by cleanup.
     const timer = window.setTimeout(() => {
       void startSession();
     }, 100);
@@ -112,12 +90,13 @@ function DemoSessionInner() {
       mountedRef.current = false;
       window.clearTimeout(timer);
 
-      // Don't blindly call session.end() here.
-      // In React StrictMode dev, cleanup will execute once, causing the connection to be disconnected immediately.
-      // Let the End button handle the actual termination.
+      // Do not call session.end() here.
+      // React StrictMode in dev can mount -> cleanup -> mount.
+      // Calling end() here may disconnect the real session.
       console.log("[AlphaAvatar demo] cleanup");
     };
-    // This is intentionally executed only once to avoid duplicate starts due to session state changes.
+
+    // Intentionally run once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -144,43 +123,57 @@ function DemoSessionInner() {
         </div>
       ) : null}
 
-      <div className="fixed right-6 top-6 z-50 flex gap-2">
-        <button
-          onClick={() => {
-            startedRef.current = false;
-            startingRef.current = false;
-            void startSession();
-          }}
-          className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white"
-        >
-          Start
-        </button>
+      {process.env.NODE_ENV === "development" ? (
+        <div className="fixed right-6 top-6 z-50 flex gap-2">
+          <button
+            onClick={() => {
+              startedRef.current = false;
+              startingRef.current = false;
+              void startSession();
+            }}
+            className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white"
+          >
+            Start
+          </button>
 
-        <button
-          onClick={() => {
-            void endSession();
-          }}
-          className="rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-2 text-sm text-red-200"
-        >
-          End
-        </button>
+          <button
+            onClick={() => {
+              void endSession();
+            }}
+            className="rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-2 text-sm text-red-200"
+          >
+            End
+          </button>
 
-        <div className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/70">
-          started: {String(started)}
+          <div className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/70">
+            started: {String(started)}
+          </div>
         </div>
-      </div>
+      ) : null}
 
       <DemoClient />
     </>
   );
 }
 
-export default function DemoPage() {
-  const agentName = process.env.NEXT_PUBLIC_AVATAR_NAME;
-
+function DemoSessionRoot({ agentName }: { agentName: string }) {
   const tokenSource = useMemo(() => {
     return TokenSource.endpoint("/api/demo-session");
   }, []);
+
+  const session = useSession(tokenSource, {
+    agentName,
+  });
+
+  return (
+    <SessionProvider session={session}>
+      <DemoSessionInner />
+    </SessionProvider>
+  );
+}
+
+export default function DemoPage() {
+  const agentName = process.env.NEXT_PUBLIC_AVATAR_NAME;
 
   if (!agentName) {
     return (
@@ -193,13 +186,5 @@ export default function DemoPage() {
     );
   }
 
-  const session = useSession(tokenSource, {
-    agentName,
-  });
-
-  return (
-    <SessionProvider session={session}>
-      <DemoSessionInner />
-    </SessionProvider>
-  );
+  return <DemoSessionRoot agentName={agentName} />;
 }

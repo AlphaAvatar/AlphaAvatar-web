@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ControlBar,
   RoomAudioRenderer,
   useAgent,
   useSessionContext,
@@ -76,9 +75,7 @@ function useParticipantVideoTrack(
       participant.videoTrackPublications.values()
     );
 
-    return publications.find((pub) => {
-      return pub.track && !pub.isMuted;
-    });
+    return publications.find((pub) => pub.track && !pub.isMuted);
   }, [participant, version]);
 
   useEffect(() => {
@@ -94,7 +91,7 @@ function useParticipantVideoTrack(
     el.srcObject = stream;
 
     void el.play().catch((err) => {
-      console.warn("[AlphaAvatar demo] video play failed:", err);
+      console.warn("[AlphaAvatar] video play failed:", err);
     });
 
     return () => {
@@ -160,7 +157,6 @@ function AgentStatusBadge() {
 function LocalVideoPreview({ chatOpen }: { chatOpen: boolean }) {
   const session = useSessionContext();
   const room = session.room;
-
   const version = useRoomRefresh(room);
 
   const localParticipant = room?.localParticipant;
@@ -198,7 +194,6 @@ function LocalVideoPreview({ chatOpen }: { chatOpen: boolean }) {
 function AgentStage({ chatOpen }: { chatOpen: boolean }) {
   const session = useSessionContext();
   const room = session.room;
-
   const version = useRoomRefresh(room);
 
   const agentParticipant = getAgentParticipant(room);
@@ -253,12 +248,13 @@ function AgentStage({ chatOpen }: { chatOpen: boolean }) {
             </div>
 
             <p className="text-3xl font-semibold text-white/90">
-              Waiting for agent avatar
+              {remoteCount > 0 ? "Agent connected" : "Waiting for agent avatar"}
             </p>
 
             <p className="mt-3 max-w-xl text-sm text-white/45">
-              If your AlphaAvatar agent joins this room and publishes audio or
-              video, it will appear here.
+              {remoteCount > 0
+                ? "AlphaAvatar is connected in voice mode. If an avatar video track is published, it will appear here."
+                : "If your AlphaAvatar agent joins this room and publishes audio or video, it will appear here."}
             </p>
 
             <p className="mt-4 text-xs text-white/30">
@@ -276,7 +272,6 @@ function AgentStage({ chatOpen }: { chatOpen: boolean }) {
 function MicDebug() {
   const session = useSessionContext();
   const room = session.room;
-
   const version = useRoomRefresh(room);
 
   const localParticipant = room?.localParticipant;
@@ -337,7 +332,7 @@ function ChatPanel({
           Chat
         </h2>
         <p className="mt-1 text-xs text-white/45">
-          Messages are sent through the LiveKit session messages API.
+          Talk to AlphaAvatar by voice or text.
         </p>
       </div>
 
@@ -419,75 +414,68 @@ function BottomDock({
 }) {
   const session = useSessionContext();
   const room = session.room;
-
   const version = useRoomRefresh(room);
 
   const [micEnabled, setMicEnabled] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
+  const [micChanging, setMicChanging] = useState(false);
+  const [cameraChanging, setCameraChanging] = useState(false);
 
   useEffect(() => {
     const localParticipant = room?.localParticipant;
-    if (!localParticipant || !room) return;
+    if (!localParticipant) return;
 
-    const updateState = () => {
-      const audioPub = Array.from(
-        localParticipant.audioTrackPublications.values()
-      ).find((pub) => pub.track && !pub.isMuted);
+    const audioPub = Array.from(
+      localParticipant.audioTrackPublications.values()
+    ).find((pub) => pub.track && !pub.isMuted);
 
-      const videoPub = Array.from(
-        localParticipant.videoTrackPublications.values()
-      ).find((pub) => pub.track && !pub.isMuted);
+    const videoPub = Array.from(
+      localParticipant.videoTrackPublications.values()
+    ).find((pub) => pub.track && !pub.isMuted);
 
-      setMicEnabled(Boolean(audioPub));
-      setCameraEnabled(Boolean(videoPub));
-    };
-
-    updateState();
-
-    room.on("localTrackPublished", updateState);
-    room.on("localTrackUnpublished", updateState);
-    room.on("trackMuted", updateState);
-    room.on("trackUnmuted", updateState);
-
-    return () => {
-      room.off("localTrackPublished", updateState);
-      room.off("localTrackUnpublished", updateState);
-      room.off("trackMuted", updateState);
-      room.off("trackUnmuted", updateState);
-    };
+    setMicEnabled(Boolean(audioPub));
+    setCameraEnabled(Boolean(videoPub));
   }, [room, version]);
 
   const toggleMic = useCallback(async () => {
     const localParticipant = room?.localParticipant;
-    if (!localParticipant) return;
+    if (!localParticipant || micChanging) return;
+
+    setMicChanging(true);
 
     try {
       const next = !micEnabled;
       await localParticipant.setMicrophoneEnabled(next);
       setMicEnabled(next);
     } catch (err) {
-      console.error("[AlphaAvatar demo] toggle mic failed:", err);
+      console.error("[AlphaAvatar] toggle mic failed:", err);
+    } finally {
+      setMicChanging(false);
     }
-  }, [room, micEnabled]);
+  }, [room, micEnabled, micChanging]);
 
   const toggleCamera = useCallback(async () => {
     const localParticipant = room?.localParticipant;
-    if (!localParticipant) return;
+    if (!localParticipant || cameraChanging) return;
+
+    setCameraChanging(true);
 
     try {
       const next = !cameraEnabled;
       await localParticipant.setCameraEnabled(next);
       setCameraEnabled(next);
     } catch (err) {
-      console.error("[AlphaAvatar demo] toggle camera failed:", err);
+      console.error("[AlphaAvatar] toggle camera failed:", err);
+    } finally {
+      setCameraChanging(false);
     }
-  }, [room, cameraEnabled]);
+  }, [room, cameraEnabled, cameraChanging]);
 
   const endCall = useCallback(async () => {
     try {
       await session.end();
     } catch (err) {
-      console.error("[AlphaAvatar demo] session.end failed:", err);
+      console.error("[AlphaAvatar] session.end failed:", err);
     }
   }, [session]);
 
@@ -497,26 +485,26 @@ function BottomDock({
         <div className="flex items-center gap-3">
           <button
             onClick={toggleMic}
-            disabled={!room}
+            disabled={!room || micChanging}
             className={`rounded-2xl border px-4 py-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
               micEnabled
                 ? "border-white/30 bg-white text-black"
                 : "border-white/10 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
-            Mic
+            {micChanging ? "Mic..." : "Mic"}
           </button>
 
           <button
             onClick={toggleCamera}
-            disabled={!room}
+            disabled={!room || cameraChanging}
             className={`rounded-2xl border px-4 py-3 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
               cameraEnabled
                 ? "border-white/30 bg-white text-black"
                 : "border-white/10 bg-white/5 text-white hover:bg-white/10"
             }`}
           >
-            Camera
+            {cameraChanging ? "Camera..." : "Camera"}
           </button>
 
           <button
@@ -554,6 +542,8 @@ function DemoShell() {
   const [chatOpen, setChatOpen] = useState(false);
   const [input, setInput] = useState("");
 
+  const localIdentity = session.room?.localParticipant?.identity?.toLowerCase();
+
   const normalizedMessages: ChatMessage[] = useMemo(() => {
     return messages
       .map((msg: any, idx: number) => {
@@ -586,13 +576,13 @@ function DemoShell() {
             ""
         ).toLowerCase();
 
-        let role: "user" | "assistant" = "assistant";
-
         const isUser =
           rawRole === "user" ||
           rawRole.includes("user") ||
           rawRole.includes("human") ||
           identity.includes("web-user") ||
+          identity.includes("user-") ||
+          Boolean(localIdentity && identity === localIdentity) ||
           msg.type === "userInput" ||
           msg.type === "userTranscript";
 
@@ -607,11 +597,8 @@ function DemoShell() {
           msg.type === "agentResponse" ||
           msg.type === "agentTranscript";
 
-        if (isUser && !isAssistant) {
-          role = "user";
-        } else {
-          role = "assistant";
-        }
+        const role: "user" | "assistant" =
+          isUser && !isAssistant ? "user" : "assistant";
 
         return {
           id: msg.id ?? msg.messageId ?? `msg-${idx}`,
@@ -626,7 +613,7 @@ function DemoShell() {
       })
       .filter(Boolean)
       .sort((a, b) => a!.createdAt - b!.createdAt) as ChatMessage[];
-  }, [messages]);
+  }, [messages, localIdentity]);
 
   const handleSend = useCallback(async () => {
     const text = input.trim();
@@ -636,7 +623,7 @@ function DemoShell() {
       await send(text);
       setInput("");
     } catch (err) {
-      console.error("[AlphaAvatar demo] send failed:", err);
+      console.error("[AlphaAvatar] send failed:", err);
     }
   }, [input, send]);
 
@@ -644,21 +631,9 @@ function DemoShell() {
     <>
       <RoomAudioRenderer />
 
-      <div className="fixed left-6 top-20 z-[9999] rounded-2xl border border-white/15 bg-black/80 p-3">
-        <ControlBar
-          controls={{
-            microphone: true,
-            camera: true,
-            screenShare: false,
-            chat: false,
-            leave: false,
-          }}
-        />
-      </div>
-
       <AgentStage chatOpen={chatOpen} />
 
-      <MicDebug />
+      {process.env.NODE_ENV === "development" ? <MicDebug /> : null}
 
       <ChatPanel
         open={chatOpen}
@@ -701,7 +676,7 @@ export default function DemoClient() {
           </Link>
 
           <h1 className="mt-3 text-4xl font-bold tracking-tight">
-            AlphaAvatar Demo
+            AlphaAvatar
           </h1>
 
           <p className="mt-2 text-sm text-white/50">
