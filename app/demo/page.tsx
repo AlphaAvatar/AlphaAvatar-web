@@ -40,6 +40,28 @@ function DemoSessionInner() {
       console.log("[AlphaAvatar demo] session.start() success");
       console.log("[AlphaAvatar demo] room:", session.room);
 
+      try {
+        await session.room?.localParticipant.publishData(
+          new TextEncoder().encode(
+            JSON.stringify({
+              type: "lk.agent.update",
+              audio_input_enabled: true,
+              audio_output_enabled: true,
+              text_input_enabled: true,
+              text_output_enabled: true,
+            })
+          ),
+          {
+            reliable: true,
+            topic: "lk.agent.update",
+          }
+        );
+
+        console.log("[AlphaAvatar demo] sent lk.agent.update");
+      } catch (err) {
+        console.error("[AlphaAvatar demo] failed to send lk.agent.update:", err);
+      }
+
       startedRef.current = true;
 
       if (mountedRef.current) {

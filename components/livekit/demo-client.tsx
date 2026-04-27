@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ControlBar,
   RoomAudioRenderer,
   useAgent,
   useSessionContext,
@@ -23,7 +24,7 @@ type ChatMessage = {
 };
 
 function useRoomRefresh(room: Room | undefined) {
-  const [, setVersion] = useState(0);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!room) return;
@@ -50,16 +51,21 @@ function useRoomRefresh(room: Room | undefined) {
       room.on(event as any, bump);
     });
 
+    bump();
+
     return () => {
       events.forEach((event) => {
         room.off(event as any, bump);
       });
     };
   }, [room]);
+
+  return version;
 }
 
 function useParticipantVideoTrack(
-  participant: LocalParticipant | RemoteParticipant | undefined
+  participant: LocalParticipant | RemoteParticipant | undefined,
+  version: number
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -73,7 +79,7 @@ function useParticipantVideoTrack(
     return publications.find((pub) => {
       return pub.track && !pub.isMuted;
     });
-  }, [participant]);
+  }, [participant, version]);
 
   useEffect(() => {
     const el = videoRef.current;
@@ -96,7 +102,7 @@ function useParticipantVideoTrack(
         el.srcObject = null;
       }
     };
-  }, [publication]);
+  }, [publication, version]);
 
   return {
     videoRef,
@@ -155,10 +161,13 @@ function LocalVideoPreview({ chatOpen }: { chatOpen: boolean }) {
   const session = useSessionContext();
   const room = session.room;
 
-  useRoomRefresh(room);
+  const version = useRoomRefresh(room);
 
   const localParticipant = room?.localParticipant;
-  const { videoRef, hasVideo } = useParticipantVideoTrack(localParticipant);
+  const { videoRef, hasVideo } = useParticipantVideoTrack(
+    localParticipant,
+    version
+  );
 
   return (
     <div
@@ -190,10 +199,13 @@ function AgentStage({ chatOpen }: { chatOpen: boolean }) {
   const session = useSessionContext();
   const room = session.room;
 
-  useRoomRefresh(room);
+  const version = useRoomRefresh(room);
 
   const agentParticipant = getAgentParticipant(room);
-  const { videoRef, hasVideo } = useParticipantVideoTrack(agentParticipant);
+  const { videoRef, hasVideo } = useParticipantVideoTrack(
+    agentParticipant,
+    version
+  );
 
   const remoteCount = room?.remoteParticipants.size ?? 0;
   const agentIdentity = agentParticipant?.identity ?? "-";
@@ -265,7 +277,7 @@ function MicDebug() {
   const session = useSessionContext();
   const room = session.room;
 
-  useRoomRefresh(room);
+  const version = useRoomRefresh(room);
 
   const localParticipant = room?.localParticipant;
 
@@ -279,15 +291,24 @@ function MicDebug() {
           .toLowerCase()
           .includes("mic")
     );
-  }, [localParticipant]);
+  }, [localParticipant, version]);
+
+  const videoPub = useMemo(() => {
+    if (!localParticipant) return undefined;
+
+    return Array.from(localParticipant.videoTrackPublications.values()).find(
+      (pub) => pub.track && !pub.isMuted
+    );
+  }, [localParticipant, version]);
 
   return (
     <div className="absolute left-6 bottom-28 z-20 rounded-xl border border-white/10 bg-black/70 px-4 py-3 text-xs text-white/70">
       <div>room: {String(room?.state ?? "disconnected")}</div>
       <div>mic publication: {micPub ? "yes" : "no"}</div>
-      <div>subscribed: {micPub ? String(micPub.isSubscribed) : "-"}</div>
-      <div>muted: {micPub ? String(micPub.isMuted) : "-"}</div>
-      <div>enabled: {micPub?.track ? "yes" : "no"}</div>
+      <div>mic muted: {micPub ? String(micPub.isMuted) : "-"}</div>
+      <div>mic enabled: {micPub?.track ? "yes" : "no"}</div>
+      <div>camera publication: {videoPub ? "yes" : "no"}</div>
+      <div>camera enabled: {videoPub?.track ? "yes" : "no"}</div>
     </div>
   );
 }
@@ -329,13 +350,27 @@ function ChatPanel({
           messages.map((msg) => (
             <div
               key={msg.id}
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm ${
-                msg.role === "user"
-                  ? "ml-auto bg-white text-black"
-                  : "mr-auto border border-white/10 bg-white/5 text-white/85"
+              className={`flex flex-col ${
+                msg.role === "user" ? "items-end" : "items-start"
               }`}
             >
-              {msg.text}
+              <div
+                className={`mb-1 px-1 text-[10px] uppercase tracking-[0.16em] ${
+                  msg.role === "user" ? "text-white/35" : "text-white/45"
+                }`}
+              >
+                {msg.role === "user" ? "You" : "AlphaAvatar"}
+              </div>
+
+              <div
+                className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "bg-white text-black"
+                    : "border border-white/10 bg-white/5 text-white/85"
+                }`}
+              >
+                {msg.text}
+              </div>
             </div>
           ))
         )}
@@ -385,7 +420,7 @@ function BottomDock({
   const session = useSessionContext();
   const room = session.room;
 
-  useRoomRefresh(room);
+  const version = useRoomRefresh(room);
 
   const [micEnabled, setMicEnabled] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(false);
@@ -420,7 +455,7 @@ function BottomDock({
       room.off("trackMuted", updateState);
       room.off("trackUnmuted", updateState);
     };
-  }, [room]);
+  }, [room, version]);
 
   const toggleMic = useCallback(async () => {
     const localParticipant = room?.localParticipant;
@@ -524,30 +559,69 @@ function DemoShell() {
       .map((msg: any, idx: number) => {
         const text =
           msg.content?.text ??
+          msg.content?.content ??
           msg.content ??
           msg.text ??
           msg.message ??
+          msg.transcript ??
           "";
 
         if (!text || typeof text !== "string") return null;
 
+        const rawRole = String(
+          msg.role ??
+            msg.participant?.kind ??
+            msg.participant?.identity ??
+            msg.from?.kind ??
+            msg.from?.identity ??
+            msg.source ??
+            msg.type ??
+            ""
+        ).toLowerCase();
+
+        const identity = String(
+          msg.participant?.identity ??
+            msg.from?.identity ??
+            msg.identity ??
+            ""
+        ).toLowerCase();
+
         let role: "user" | "assistant" = "assistant";
 
-        if (
+        const isUser =
+          rawRole === "user" ||
+          rawRole.includes("user") ||
+          rawRole.includes("human") ||
+          identity.includes("web-user") ||
           msg.type === "userInput" ||
-          msg.type === "userTranscript" ||
-          msg.role === "user"
-        ) {
+          msg.type === "userTranscript";
+
+        const isAssistant =
+          rawRole === "assistant" ||
+          rawRole.includes("assistant") ||
+          rawRole.includes("agent") ||
+          rawRole.includes("avatar") ||
+          identity.includes("agent") ||
+          identity.includes("assistant") ||
+          identity.includes("alphaavatar") ||
+          msg.type === "agentResponse" ||
+          msg.type === "agentTranscript";
+
+        if (isUser && !isAssistant) {
           role = "user";
+        } else {
+          role = "assistant";
         }
 
         return {
-          id: msg.id ?? `msg-${idx}`,
+          id: msg.id ?? msg.messageId ?? `msg-${idx}`,
           role,
           text,
           createdAt: msg.createdAt
             ? new Date(msg.createdAt).getTime()
-            : idx,
+            : msg.timestamp
+              ? new Date(msg.timestamp).getTime()
+              : idx,
         } satisfies ChatMessage;
       })
       .filter(Boolean)
@@ -569,6 +643,18 @@ function DemoShell() {
   return (
     <>
       <RoomAudioRenderer />
+
+      <div className="fixed left-6 top-20 z-[9999] rounded-2xl border border-white/15 bg-black/80 p-3">
+        <ControlBar
+          controls={{
+            microphone: true,
+            camera: true,
+            screenShare: false,
+            chat: false,
+            leave: false,
+          }}
+        />
+      </div>
 
       <AgentStage chatOpen={chatOpen} />
 
