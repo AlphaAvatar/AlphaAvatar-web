@@ -22,7 +22,7 @@ function DemoSessionInner() {
 
   const startSession = useCallback(async () => {
     if (startingRef.current || startedRef.current) {
-      console.log("[AlphaAvatar demo] session already starting/started, skip");
+      console.log("[AlphaAvatar] session already starting/started, skip");
       return;
     }
 
@@ -33,11 +33,11 @@ function DemoSessionInner() {
         setStartError(null);
       }
 
-      console.log("[AlphaAvatar demo] calling session.start()");
+      console.log("[AlphaAvatar] calling session.start()");
 
       await session.start();
 
-      console.log("[AlphaAvatar demo] session.start() success", {
+      console.log("[AlphaAvatar] session.start() success", {
         room: session.room?.name,
         identity: session.room?.localParticipant?.identity,
         state: session.room?.state,
@@ -49,7 +49,7 @@ function DemoSessionInner() {
         setStarted(true);
       }
     } catch (err) {
-      console.error("[AlphaAvatar demo] session.start failed:", err);
+      console.error("[AlphaAvatar] session.start failed:", err);
 
       startedRef.current = false;
 
@@ -64,7 +64,7 @@ function DemoSessionInner() {
 
   const endSession = useCallback(async () => {
     try {
-      console.log("[AlphaAvatar demo] calling session.end()");
+      console.log("[AlphaAvatar] calling session.end()");
 
       startingRef.current = false;
       startedRef.current = false;
@@ -75,7 +75,7 @@ function DemoSessionInner() {
         setStarted(false);
       }
     } catch (err) {
-      console.error("[AlphaAvatar demo] session.end failed:", err);
+      console.error("[AlphaAvatar] session.end failed:", err);
     }
   }, [session]);
 
@@ -93,7 +93,7 @@ function DemoSessionInner() {
       // Do not call session.end() here.
       // React StrictMode in dev can mount -> cleanup -> mount.
       // Calling end() here may disconnect the real session.
-      console.log("[AlphaAvatar demo] cleanup");
+      console.log("[AlphaAvatar] cleanup");
     };
 
     // Intentionally run once.
@@ -103,51 +103,33 @@ function DemoSessionInner() {
   return (
     <>
       {startError ? (
-        <div className="fixed left-6 top-6 z-50 max-w-xl rounded-2xl border border-red-500/40 bg-red-950/90 p-4 text-sm text-red-100 shadow-2xl">
-          <div className="font-semibold">session.start failed</div>
-
-          <pre className="mt-2 whitespace-pre-wrap break-words text-xs">
-            {startError}
-          </pre>
-
-          <button
-            onClick={() => {
-              startedRef.current = false;
-              startingRef.current = false;
-              void startSession();
-            }}
-            className="mt-3 rounded-xl bg-white px-4 py-2 text-sm font-medium text-black"
-          >
-            Retry start
-          </button>
-        </div>
-      ) : null}
-
-      {process.env.NODE_ENV === "development" ? (
-        <div className="fixed right-6 top-6 z-50 flex gap-2">
-          <button
-            onClick={() => {
-              startedRef.current = false;
-              startingRef.current = false;
-              void startSession();
-            }}
-            className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white"
-          >
-            Start
-          </button>
-
-          <button
-            onClick={() => {
-              void endSession();
-            }}
-            className="rounded-xl border border-red-500/30 bg-red-500/20 px-4 py-2 text-sm text-red-200"
-          >
-            End
-          </button>
-
-          <div className="rounded-xl border border-white/15 bg-black/70 px-4 py-2 text-sm text-white/70">
-            started: {String(started)}
+        <div className="fixed left-1/2 top-6 z-50 w-[calc(100%-48px)] max-w-[560px] -translate-x-1/2 rounded-[18px] border border-red-400/25 bg-red-950/55 px-5 py-4 text-center text-sm text-red-100 shadow-[0_20px_80px_rgba(185,28,28,0.24)] backdrop-blur-xl">
+          <div className="flex items-center justify-center gap-2 font-semibold">
+            <span className="h-2 w-2 rounded-full bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.85)]" />
+            Unable to start AlphaAvatar demo
           </div>
+
+          <p className="mt-2 leading-6 text-red-100/75">
+            The realtime demo is temporarily unavailable. Please try again later.
+          </p>
+
+          {process.env.NODE_ENV === "development" ? (
+            <pre className="mt-3 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-xl border border-white/10 bg-black/35 p-3 text-left text-xs text-red-100/70">
+              {startError}
+            </pre>
+          ) : null}
+
+          <button
+            onClick={() => {
+              setStartError(null);
+              startedRef.current = false;
+              startingRef.current = false;
+              void startSession();
+            }}
+            className="mt-4 rounded-xl bg-white px-4 py-2 text-sm font-medium text-black transition hover:opacity-90"
+          >
+            Retry
+          </button>
         </div>
       ) : null}
 
