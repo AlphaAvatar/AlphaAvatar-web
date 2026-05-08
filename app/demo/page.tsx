@@ -10,6 +10,52 @@ import {
 } from "@livekit/components-react";
 import { TokenSource } from "livekit-client";
 
+function getBrowserTimeMetadata() {
+  if (typeof window === "undefined") {
+    return {
+      timezone: "Unknown",
+      timezone_source: "unknown",
+      browser_locale: "Unknown",
+      browser_utc_offset_minutes: 0,
+    };
+  }
+
+  const timezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || "Unknown";
+
+  const browserLocale =
+    typeof navigator !== "undefined" ? navigator.language : "Unknown";
+
+  // JavaScript getTimezoneOffset() returns minutes behind UTC.
+  // For example:
+  //   America/Los_Angeles daylight time => 420
+  // We store UTC offset as signed minutes:
+  //   America/Los_Angeles daylight time => -420
+  const browserUtcOffsetMinutes = -new Date().getTimezoneOffset();
+
+  return {
+    timezone,
+    timezone_source: "browser",
+    browser_locale: browserLocale,
+    browser_utc_offset_minutes: browserUtcOffsetMinutes,
+  };
+}
+
+function buildDemoSessionEndpoint() {
+  const metadata = getBrowserTimeMetadata();
+  const params = new URLSearchParams();
+
+  params.set("timezone", metadata.timezone);
+  params.set("timezone_source", metadata.timezone_source);
+  params.set("browser_locale", metadata.browser_locale);
+  params.set(
+    "browser_utc_offset_minutes",
+    String(metadata.browser_utc_offset_minutes)
+  );
+
+  return `/api/demo-session?${params.toString()}`;
+}
+
 function DemoSessionInner() {
   const session = useSessionContext();
 
@@ -140,7 +186,7 @@ function DemoSessionInner() {
 
 function DemoSessionRoot({ agentName }: { agentName: string }) {
   const tokenSource = useMemo(() => {
-    return TokenSource.endpoint("/api/demo-session");
+    return TokenSource.endpoint(buildDemoSessionEndpoint());
   }, []);
 
   const session = useSession(tokenSource, {

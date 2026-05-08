@@ -5,13 +5,55 @@ type TokenEndpointRequest = {
   room_name?: string;
   participant_identity?: string;
   participant_name?: string;
-  participant_metadata?: string;
+  participant_metadata?: string | Record<string, any>;
   participant_attributes?: Record<string, string>;
   room_config?: Record<string, any>;
+
+  timezone?: string;
+  timezone_source?: string;
+  browser_utc_offset_minutes?: number;
+  browser_locale?: string;
 };
 
 function shortId() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function parseMetadata(input: TokenEndpointRequest["participant_metadata"]) {
+  if (!input) return {};
+
+  if (typeof input === "string") {
+    try {
+      return JSON.parse(input);
+    } catch {
+      return {};
+    }
+  }
+
+  if (typeof input === "object") {
+    return input;
+  }
+
+  return {};
+}
+
+function getQueryMetadata(req: Request) {
+  const url = new URL(req.url);
+
+  const timezone = url.searchParams.get("timezone");
+  const timezoneSource = url.searchParams.get("timezone_source");
+  const browserLocale = url.searchParams.get("browser_locale");
+  const utcOffset = url.searchParams.get("browser_utc_offset_minutes");
+  const parsedUtcOffset = utcOffset !== null ? Number(utcOffset) : undefined;
+
+  return {
+    ...(timezone ? { timezone } : {}),
+    ...(timezoneSource ? { timezone_source: timezoneSource } : {}),
+    ...(browserLocale ? { browser_locale: browserLocale } : {}),
+    ...(Number.isFinite(parsedUtcOffset)
+      ? { browser_utc_offset_minutes: parsedUtcOffset }
+      : {}),
+  };
 }
 
 async function handleTokenRequest(req: Request) {
@@ -37,14 +79,38 @@ async function handleTokenRequest(req: Request) {
     body = {};
   }
 
+  const queryMetadata = getQueryMetadata(req);
+
   const roomName = body.room_name ?? `alphaavatar-demo-${shortId()}`;
   const participantIdentity =
     body.participant_identity ?? `web-user-${shortId()}`;
 
-  const mergedMetadata = {
+  const baseMetadata = {
     room_type: "web_app",
     channel: "web_app",
     source: "alphaavatar-web",
+  };
+
+  const clientMetadata = parseMetadata(body.participant_metadata);
+
+  const timeMetadata = {
+    ...(queryMetadata ?? {}),
+    ...(body.timezone ? { timezone: body.timezone } : {}),
+    ...(body.timezone_source ? { timezone_source: body.timezone_source } : {}),
+    ...(body.browser_utc_offset_minutes !== undefined
+      ? { browser_utc_offset_minutes: body.browser_utc_offset_minutes }
+      : {}),
+    ...(body.browser_locale ? { browser_locale: body.browser_locale } : {}),
+  };
+
+  const mergedParticipantMetadata = {
+    ...baseMetadata,
+    ...clientMetadata,
+    ...timeMetadata,
+    timezone_source:
+      timeMetadata.timezone_source ??
+      clientMetadata.timezone_source ??
+      (timeMetadata.timezone || clientMetadata.timezone ? "browser" : "server"),
   };
 
   try {
@@ -52,11 +118,7 @@ async function handleTokenRequest(req: Request) {
       identity: participantIdentity,
       name: body.participant_name ?? participantIdentity,
       ttl: "10m",
-      metadata:
-        body.participant_metadata ??
-        JSON.stringify({
-          source: "alphaavatar-web",
-        }),
+      metadata: JSON.stringify(mergedParticipantMetadata),
       attributes: body.participant_attributes,
     });
 
@@ -68,15 +130,12 @@ async function handleTokenRequest(req: Request) {
       canPublishData: true,
     });
 
-    // Key point: room_config must be directly attached to the token,
-    // it cannot be put into addGrant().
     const roomConfig = {
       ...(body.room_config ?? {}),
       name: roomName,
-      metadata: JSON.stringify(mergedMetadata),
+      metadata: JSON.stringify(baseMetadata),
     };
 
-    // livekit-server-sdk 的 JS 用法
     (at as any).roomConfig = roomConfig;
 
     const participantToken = await at.toJwt();
