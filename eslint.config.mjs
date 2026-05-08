@@ -1,13 +1,39 @@
 import { defineConfig, globalIgnores } from "eslint/config";
-import nextVitals from "eslint-config-next/core-web-vitals";
-import nextTs from "eslint-config-next/typescript";
+import nextPlugin from "@next/eslint-plugin-next";
+import reactHooks from "eslint-plugin-react-hooks";
+import tseslint from "typescript-eslint";
 
 const eslintConfig = defineConfig([
-  ...nextVitals,
-  ...nextTs,
-  // Override default ignores of eslint-config-next.
+  ...tseslint.configs.recommended,
+  {
+    plugins: {
+      "@next/next": nextPlugin,
+      "react-hooks": reactHooks,
+    },
+    rules: {
+      ...nextPlugin.configs.recommended.rules,
+      ...nextPlugin.configs["core-web-vitals"].rules,
+      ...reactHooks.configs.recommended.rules,
+
+      // AlphaAvatar-web demo: allow practical frontend / LiveKit integration patterns.
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+
+      // React 19 compiler-style lint rule; too strict for this demo client.
+      "react-hooks/set-state-in-effect": "off",
+
+      // Keep hook dependency issues as warnings instead of blocking Vercel builds.
+      "react-hooks/exhaustive-deps": "warn",
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",

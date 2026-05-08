@@ -463,23 +463,37 @@ function useAgentAvailability(room: Room | undefined) {
   };
 }
 
+type VideoTrackPublicationLike = {
+  track?: {
+    mediaStreamTrack?: MediaStreamTrack;
+  } | null;
+  isMuted: boolean;
+};
+
 function useParticipantVideoTrack(
   participant: LocalParticipant | RemoteParticipant | undefined,
   version: number
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const publication = useMemo(() => {
+  const publication = useMemo<VideoTrackPublicationLike | undefined>(() => {
     if (!participant) return undefined;
 
-    return Array.from(participant.videoTrackPublications.values()).find(
-      (pub) => pub.track && !pub.isMuted
-    );
+    const publications =
+      participant.videoTrackPublications.values() as unknown as Iterable<VideoTrackPublicationLike>;
+
+    for (const pub of publications) {
+      if (pub.track && !pub.isMuted) {
+        return pub;
+      }
+    }
+
+    return undefined;
   }, [participant, version]);
 
   useEffect(() => {
     const el = videoRef.current;
-    const track = publication?.track as any;
+    const track = publication?.track;
 
     if (!el || !track?.mediaStreamTrack) return;
 
