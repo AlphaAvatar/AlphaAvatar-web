@@ -6,11 +6,11 @@
 // - Waiting for AlphaAvatar agent... in the top right corner
 // - Input box disabled
 // Agent is not available after 9 seconds
-// - Mic / Camera can still be opened, allowing users to authorize in advance
+// - Voice / Vision can still be opened, allowing users to authorize in advance
 // Agent added:
 // - Realtime AI Avatar Demo in the top right corner
 // - Input box available
-// - Mic / Camera available
+// - Voice / Vision available
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -264,7 +264,7 @@ function EndedOverlay({ onRestart }: { onRestart: () => void }) {
   );
 }
 
-function IconMic() {
+function IconVoice() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
       <path
@@ -282,7 +282,7 @@ function IconMic() {
   );
 }
 
-function IconCamera() {
+function IconVision() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
       <path
@@ -613,15 +613,34 @@ function SpeakingCard({
   agentState: string;
   level: number;
 }) {
-  const isSpeaking = agentState === "speaking" || level > 0.2;
+  const normalizedState = agentState.toLowerCase();
+  const isSpeaking = normalizedState === "speaking" || level > 0.2;
+
+  const title = (() => {
+    if (isSpeaking) return "Alpha is speaking...";
+    if (normalizedState === "thinking") return "Alpha is thinking...";
+    if (normalizedState === "listening") return "Alpha is listening...";
+    if (normalizedState === "connecting") return "Alpha is connecting...";
+    if (normalizedState === "disconnected") return "Alpha is offline";
+    return "Alpha is ready";
+  })();
+
+  const description = (() => {
+    if (isSpeaking) return "Responding with realtime voice";
+    if (normalizedState === "thinking") return "Understanding context, tools, and visual input";
+    if (normalizedState === "listening") return "Listening for your voice or message";
+    if (normalizedState === "connecting") return "Preparing realtime session";
+    if (normalizedState === "disconnected") return "Waiting for the demo session";
+    return "Ready for voice, text, and vision";
+  })();
 
   return (
-    <div className="absolute left-6 top-6 z-20 w-[300px] rounded-[16px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+    <div className="absolute left-6 top-6 z-20 w-[320px] rounded-[16px] border border-white/10 bg-white/[0.04] px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div className="flex items-center gap-3">
         <div className="text-[17px] text-violet-300">✦</div>
 
         <div className="text-[16px] font-semibold text-violet-300">
-          {isSpeaking ? "Alpha is speaking..." : "Alpha is listening..."}
+          {title}
         </div>
 
         <div className="ml-auto flex h-4 items-end gap-[3px]">
@@ -638,7 +657,7 @@ function SpeakingCard({
       </div>
 
       <div className="mt-2 text-[14px] text-white/55">
-        Listening and responding in real time
+        {description}
       </div>
     </div>
   );
@@ -710,22 +729,29 @@ function LocalVideoPreview() {
   );
 
   return (
-    <div className="absolute bottom-7 right-7 z-20 h-[178px] w-[250px] overflow-hidden rounded-[18px] border border-white/10 bg-white/[0.05] shadow-2xl">
+    <div className="absolute bottom-7 right-7 z-20 h-[158px] w-[222px] overflow-hidden rounded-[18px] border border-white/10 bg-white/[0.05] shadow-2xl">
       {hasVideo ? (
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className="h-full w-full object-cover"
-        />
+        <>
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="h-full w-full object-cover"
+          />
+
+          <div className="absolute right-3 top-3 flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/15 px-2.5 py-1 text-[11px] font-medium text-emerald-200 shadow-[0_0_20px_rgba(16,185,129,0.18)] backdrop-blur">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
+            Vision active
+          </div>
+        </>
       ) : (
         <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-white/[0.09] to-white/[0.02] text-center">
           <div className="mb-3 rounded-full border border-white/10 bg-black/30 px-4 py-2 text-sm text-white/70">
-            Camera off
+            Vision off
           </div>
           <div className="max-w-[12rem] text-xs leading-relaxed text-white/40">
-            Turn on your camera to show your preview here.
+            Turn on your vision to enable visual context.
           </div>
         </div>
       )}
@@ -734,18 +760,20 @@ function LocalVideoPreview() {
         <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/20 text-[10px]">
           ♙
         </span>
-        You
+        {hasVideo ? "You · Vision" : "You"}
       </div>
 
-      <div className="absolute bottom-4 right-4 flex h-7 items-end gap-1">
-        {[8, 15, 21].map((h, i) => (
-          <span
-            key={i}
-            className="w-1.5 rounded-full bg-green-400"
-            style={{ height: h }}
-          />
-        ))}
-      </div>
+      {hasVideo ? (
+        <div className="absolute bottom-4 right-4 flex h-7 items-end gap-1">
+          {[8, 15, 21].map((h, i) => (
+            <span
+              key={i}
+              className="w-1.5 rounded-full bg-green-400"
+              style={{ height: h }}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -789,46 +817,70 @@ function AgentStage({ agentState }: { agentState: string }) {
 function ChatPanel({
   open,
   messages,
+  onClose,
 }: {
   open: boolean;
   messages: ChatMessage[];
+  onClose: () => void;
 }) {
   if (!open) return null;
 
   return (
-    <div className="absolute bottom-28 left-8 z-30 w-[360px] overflow-hidden rounded-3xl border border-violet-400/18 bg-[#070812] shadow-2xl backdrop-blur-xl">
-      <div className="border-b border-white/10 px-5 py-4">
-        <div className="text-sm font-semibold text-white">Chat</div>
-        <div className="mt-1 text-xs text-white/45">
-          Recent AlphaAvatar messages
-        </div>
-      </div>
-
-      <div className="max-h-[360px] space-y-3 overflow-y-auto p-4">
-        {messages.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/45">
-            No messages yet.
-          </div>
-        ) : (
-          messages.slice(-8).map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[82%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "bg-violet-500 text-white"
-                    : "border border-white/10 bg-white/[0.055] text-white/80"
-                }`}
-              >
-                {msg.text}
+    <aside className="relative z-20 flex min-h-0 overflow-hidden rounded-[24px] border border-violet-400/18 bg-[#070812]/95 shadow-[0_24px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+      <div className="flex min-h-0 w-full flex-col">
+        <div className="shrink-0 border-b border-white/10 px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-white">Chat</div>
+              <div className="mt-1 text-xs text-white/45">
+                Recent AlphaAvatar messages
               </div>
             </div>
-          ))
-        )}
+
+            <div className="flex items-center gap-2">
+              <div className="rounded-full border border-violet-400/25 bg-violet-500/15 px-2.5 py-1 text-xs font-medium text-violet-200">
+                {messages.length}
+              </div>
+
+              <button
+                onClick={onClose}
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-white/45 transition hover:border-violet-400/35 hover:bg-white/[0.08] hover:text-white"
+                aria-label="Close chat"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+          {messages.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm text-white/45">
+              No messages yet.
+            </div>
+          ) : (
+            messages.slice(-12).map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[86%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                    msg.role === "user"
+                      ? "bg-violet-500 text-white shadow-[0_10px_30px_rgba(139,92,246,0.22)]"
+                      : "border border-white/10 bg-white/[0.055] text-white/80"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -898,10 +950,10 @@ function BottomDock({
   const room = session.room;
   const version = useRoomRefresh(room);
 
-  const [micEnabled, setMicEnabled] = useState(false);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [micChanging, setMicChanging] = useState(false);
-  const [cameraChanging, setCameraChanging] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [visionEnabled, setVisionEnabled] = useState(false);
+  const [voiceChanging, setVoiceChanging] = useState(false);
+  const [visionChanging, setVisionChanging] = useState(false);
 
   const mounted = useMounted();
   const textEnabled = mounted && isLive;
@@ -919,11 +971,11 @@ function BottomDock({
       localParticipant.videoTrackPublications.values()
     ).find((pub) => pub.track && !pub.isMuted);
 
-    setMicEnabled(Boolean(audioPub));
-    setCameraEnabled(Boolean(videoPub));
+    setVoiceEnabled(Boolean(audioPub));
+    setVisionEnabled(Boolean(videoPub));
   }, [room, version]);
 
-  const toggleMic = useCallback(async () => {
+  const toggleVoice = useCallback(async () => {
     const localParticipant = room?.localParticipant;
 
     if (!canUseMedia) {
@@ -931,107 +983,137 @@ function BottomDock({
       return;
     }
 
-    if (!localParticipant || micChanging) return;
+    if (!localParticipant || voiceChanging) return;
 
-    setMicChanging(true);
+    setVoiceChanging(true);
 
     try {
-      const next = !micEnabled;
+      const next = !voiceEnabled;
       await localParticipant.setMicrophoneEnabled(next);
-      setMicEnabled(next);
+      setVoiceEnabled(next);
     } catch (err) {
-      console.error("[AlphaAvatar] toggle mic failed:", err);
+      console.error("[AlphaAvatar] toggle voice failed:", err);
       onToast(
         "Microphone permission failed. Please enable microphone access in your browser and try again.",
         "error"
       );
     } finally {
-      setMicChanging(false);
+      setVoiceChanging(false);
     }
-  }, [room, isLive, micEnabled, micChanging, onToast]);
+  }, [room, canUseMedia, voiceEnabled, voiceChanging, onToast]);
 
-  const toggleCamera = useCallback(async () => {
+  const toggleVision = useCallback(async () => {
     const localParticipant = room?.localParticipant;
 
-    if (!isLive) {
-      onToast("Please wait until the realtime demo is connected.", "info");
+    if (!canUseMedia) {
+      onToast("Please wait until the LiveKit room is connected.", "info");
       return;
     }
 
-    if (!localParticipant || cameraChanging) return;
+    if (!localParticipant || visionChanging) return;
 
-    setCameraChanging(true);
+    setVisionChanging(true);
 
     try {
-      const next = !cameraEnabled;
+      const next = !visionEnabled;
       await localParticipant.setCameraEnabled(next);
-      setCameraEnabled(next);
+      setVisionEnabled(next);
+
+      if (next) {
+        onToast(
+          "Vision is active. Try asking: “What am I doing?”",
+          "info"
+        );
+      } else {
+        onToast("Vision is off.", "info");
+      }
     } catch (err) {
-      console.error("[AlphaAvatar] toggle camera failed:", err);
+      console.error("[AlphaAvatar] toggle vision failed:", err);
       onToast(
-        "Camera permission failed. Please enable camera access in your browser and try again.",
+        "Vision permission failed. Please enable vision access in your browser and try again.",
         "error"
       );
     } finally {
-      setCameraChanging(false);
+      setVisionChanging(false);
     }
-  }, [room, isLive, cameraEnabled, cameraChanging, onToast]);
+  }, [room, canUseMedia, visionEnabled, visionChanging, onToast]);
 
   return (
     <div className="relative z-30 h-[88px]">
-      <div className="grid h-full grid-cols-[172px_445px_1fr_185px] items-center gap-4">
+      <div
+        className={`grid h-full items-center gap-4 ${
+          chatOpen
+            ? "grid-cols-[172px_445px_minmax(360px,0.9fr)_185px]"
+            : "grid-cols-[172px_445px_minmax(420px,1fr)_185px]"
+        }`}
+      >
         <button
-          onClick={() => setChatOpen(!chatOpen)}
-          className={`h-[88px] rounded-[16px] border px-5 text-left transition ${
-            chatOpen
-              ? "border-violet-400/45 bg-violet-500/15 text-violet-200 shadow-[0_0_32px_rgba(139,92,246,0.22)]"
-              : "border-white/10 bg-white/[0.045] hover:bg-white/[0.07]"
-          }`}
+          onClick={() => {
+            onToast("Runtime panel is coming soon.", "info");
+          }}
+          className="group h-[88px] rounded-[16px] border border-violet-400/20 bg-violet-500/[0.08] px-5 text-left shadow-[0_18px_60px_rgba(76,29,149,0.18)] backdrop-blur transition hover:border-violet-400/32 hover:bg-violet-500/[0.11] hover:shadow-[0_20px_70px_rgba(99,102,241,0.22)]"
         >
-          <div className="flex items-center gap-3 text-white">
-            <IconChat />
-            <span className="text-[16px] font-semibold">Chat</span>
-            {messageCount > 0 ? (
-              <span className="ml-auto flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-500 px-1 text-xs font-semibold">
-                {Math.min(messageCount, 9)}
-              </span>
-            ) : null}
-          </div>
+          <div className="flex h-full items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.9)]" />
 
-          <div className="mt-3 flex items-center gap-2 text-sm text-white/55">
-            {messageCount === 0 ? "No messages yet" : `${messageCount} messages`}
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.85)]" />
+                <span className="truncate text-[16px] font-semibold tracking-[-0.02em] text-white">
+                  Runtime
+                </span>
+              </div>
+
+              <div className="mt-2 truncate text-[13px] text-violet-100/70">
+                Personal OS
+              </div>
+            </div>
+
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-violet-400/24 bg-violet-500/[0.12] text-violet-200 transition group-hover:border-violet-400/36 group-hover:bg-violet-500/[0.16]">
+              <IconSettings />
+            </span>
           </div>
         </button>
 
         <div className="flex h-[88px] items-center justify-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.045] px-4 backdrop-blur-xl">
           <DockButton
-            active={micEnabled}
-            disabled={!mediaEnabled || micChanging}
-            onClick={toggleMic}
-            icon={<IconMic />}
-            label="Mic"
+            active={voiceEnabled}
+            disabled={!mediaEnabled || voiceChanging}
+            onClick={toggleVoice}
+            icon={<IconVoice />}
+            label="Voice"
           />
 
           <DockButton
-            active={cameraEnabled}
-            disabled={!mediaEnabled || cameraChanging}
-            onClick={toggleCamera}
-            icon={<IconCamera />}
-            label="Camera"
+            active={visionEnabled}
+            disabled={!mediaEnabled || visionChanging}
+            onClick={toggleVision}
+            icon={<IconVision />}
+            label="Vision"
           />
 
-          <DockButton icon={<IconScreen />} label="Share" />
+          <DockButton
+            icon={<IconScreen />}
+            label="Screen"
+            onClick={() => {
+              onToast("Screen vision is coming soon.", "info");
+            }}
+          />
 
           <DockButton
             active={chatOpen}
             onClick={() => setChatOpen(!chatOpen)}
             icon={<IconChat />}
-            label="Chat"
+            label="Timeline"
             badge={messageCount > 0 ? Math.min(messageCount, 9) : undefined}
           />
 
-          <DockButton icon={<IconSettings />} label="Settings" />
+          <DockButton
+            icon={<IconSettings />}
+            label="Control"
+            onClick={() => {
+              onToast("Control center is coming soon.", "info");
+            }}
+          />
         </div>
 
         <div className="flex h-[88px] items-center rounded-[24px] border border-white/10 bg-white/[0.045] px-5 backdrop-blur-xl">
@@ -1194,12 +1276,24 @@ function DemoShell({
     <div className="relative grid h-full grid-rows-[1fr_88px] gap-5">
       <RoomAudioRenderer />
 
-      <div className="relative min-h-0">
-        <AgentStage agentState={String(state ?? "disconnected")} />
+      <div
+        className={`relative min-h-0 grid gap-5 transition-[grid-template-columns] duration-300 ${
+          chatOpen
+            ? "grid-cols-1 xl:grid-cols-[minmax(0,1fr)_390px]"
+            : "grid-cols-[minmax(0,1fr)]"
+        }`}
+      >
+        <div className="relative min-h-0">
+          <AgentStage agentState={String(state ?? "disconnected")} />
 
-        <ChatPanel open={chatOpen} messages={normalizedMessages} />
+          {callEnded ? <EndedOverlay onRestart={onRestart} /> : null}
+        </div>
 
-        {callEnded ? <EndedOverlay onRestart={onRestart} /> : null}
+        <ChatPanel
+          open={chatOpen}
+          messages={normalizedMessages}
+          onClose={() => setChatOpen(false)}
+        />
       </div>
 
       <BottomDock
@@ -1336,7 +1430,7 @@ export default function DemoClient() {
     <main className="min-h-screen overflow-hidden bg-[#02040b] text-white">
       <div className="pointer-events-none fixed inset-0 bg-[linear-gradient(rgba(100,116,255,0.13)_1px,transparent_1px),linear-gradient(90deg,rgba(100,116,255,0.13)_1px,transparent_1px)] bg-[size:18px_18px]" />
 
-      <div className="relative mx-auto flex min-h-screen max-w-[1510px] items-center px-8 py-8">
+      <div className="relative mx-auto flex min-h-screen max-w-[1510px] items-center px-8 py-4">
         <div className="relative h-[calc(100vh-64px)] min-h-[760px] w-full overflow-hidden rounded-[14px] border border-indigo-500/30 bg-black/70 shadow-[0_0_0_1px_rgba(255,255,255,0.025),0_30px_120px_rgba(0,0,0,0.7)]">
           <ConnectionNotice
             visible={(showConnectionNotice || showAgentNotice) && !callEnded}
@@ -1350,7 +1444,7 @@ export default function DemoClient() {
 
           <ToastStack toasts={toasts} onDismiss={dismissToast} />
 
-          <header className="flex h-[88px] items-center justify-between border-b border-white/[0.075] px-9">
+          <header className="flex h-[76px] items-center justify-between border-b border-white/[0.075] px-8">
             <AlphaLogo />
 
             <div className="flex items-center gap-3 text-sm text-white/60">
