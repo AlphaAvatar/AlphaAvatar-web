@@ -64,7 +64,7 @@ function DemoSessionInner() {
   const startedRef = useRef(false);
 
   const [startError, setStartError] = useState<string | null>(null);
-  const [started, setStarted] = useState(false);
+  const [_started, setStarted] = useState(false);
 
   const startSession = useCallback(async () => {
     if (startingRef.current || startedRef.current) {
@@ -108,7 +108,7 @@ function DemoSessionInner() {
     }
   }, [session]);
 
-  const endSession = useCallback(async () => {
+  const _endSession = useCallback(async () => {
     try {
       console.log("[AlphaAvatar] calling session.end()");
 
