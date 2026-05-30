@@ -10,6 +10,27 @@ export const HERO_NEWS_INTERVAL_MS = 4500;
 
 export const HERO_NEWS_ITEMS: HeroNewsItem[] = [
   {
+    id: "v0-6-0",
+    icon: "🔥",
+    text: "AlphaAvatar v0.6.0: Status plugin, sampled visual inputs, and status-aware tool feedback.",
+    href: "https://github.com/AlphaAvatar/AlphaAvatar",
+    external: true,
+  },
+  {
+    id: "community-live",
+    icon: "💬",
+    text: "AlphaAvatar community is now live on Discord and GitHub Discussions.",
+    href: "https://discord.gg/g22eMMYrW",
+    external: true,
+  },
+  {
+    id: "v0-5-5",
+    icon: "🛠️",
+    text: "v0.5.5 fixed inference runner registration lifecycle for production start mode.",
+    href: "https://github.com/AlphaAvatar/AlphaAvatar",
+    external: true,
+  },
+  {
     id: "vision-demo",
     icon: "🔥",
     text: "Realtime voice, text, and camera vision demo",

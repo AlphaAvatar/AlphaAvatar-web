@@ -70,6 +70,14 @@ function GitHubIcon({ className = "h-4 w-4" }: { className?: string }) {
   );
 }
 
+function DiscordIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M20.32 4.37A19.8 19.8 0 0 0 15.36 2.8a13.7 13.7 0 0 0-.64 1.32 18.4 18.4 0 0 0-5.44 0 13.7 13.7 0 0 0-.64-1.32 19.8 19.8 0 0 0-4.96 1.57C.54 9.1-.32 13.7.1 18.23a19.9 19.9 0 0 0 6.08 3.07c.49-.67.92-1.38 1.29-2.13a12.9 12.9 0 0 1-2.03-.98l.49-.38a14.2 14.2 0 0 0 12.14 0l.49.38c-.65.39-1.33.72-2.03.98.37.75.8 1.46 1.29 2.13a19.9 19.9 0 0 0 6.08-3.07c.5-5.25-.85-9.8-3.58-13.86ZM8.02 15.43c-1.18 0-2.15-1.08-2.15-2.4s.95-2.4 2.15-2.4c1.2 0 2.17 1.09 2.15 2.4 0 1.32-.95 2.4-2.15 2.4Zm7.96 0c-1.18 0-2.15-1.08-2.15-2.4s.95-2.4 2.15-2.4c1.2 0 2.17 1.09 2.15 2.4 0 1.32-.95 2.4-2.15 2.4Z" />
+    </svg>
+  );
+}
+
 function FeatureCard({
   eyebrow,
   title,
@@ -354,6 +362,16 @@ export default async function HomePage() {
             </a>
 
             <a
+              href="https://discord.gg/g22eMMYrW"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-[16px] border border-[#5865F2]/35 bg-[#5865F2]/10 px-7 py-3.5 font-medium text-white/90 backdrop-blur transition hover:border-[#5865F2]/60 hover:bg-[#5865F2]/18"
+            >
+              <DiscordIcon className="h-4 w-4 text-white/80" />
+              Join Discord
+            </a>
+
+            <a
               href="https://github.com/AlphaAvatar/AlphaAvatar"
               target="_blank"
               rel="noreferrer"
@@ -385,6 +403,45 @@ export default async function HomePage() {
             <span className="rounded-full border border-white/[0.08] bg-white/[0.025] px-3.5 py-1.5">
               Realtime Avatar
             </span>
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <div className="rounded-[24px] border border-violet-400/18 bg-white/[0.035] p-6 text-center shadow-[0_30px_120px_rgba(0,0,0,0.38)] backdrop-blur">
+            <div className="text-xs font-medium uppercase tracking-[0.18em] text-violet-200/60">
+              Community
+            </div>
+
+            <h2 className="mt-2 text-[26px] font-semibold tracking-[-0.035em] text-white">
+              Build AlphaAvatar with the community
+            </h2>
+
+            <p className="mx-auto mt-3 max-w-2xl text-[14.5px] leading-7 text-white/50">
+              Join developers, researchers, and builders interested in realtime agents,
+              multimodal AI, memory systems, MCP tools, and personal AI assistants.
+            </p>
+
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a
+                href="https://discord.gg/g22eMMYrW"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-[#5865F2]/35 bg-[#5865F2]/10 px-5 py-2.5 text-sm font-medium text-white/90 transition hover:border-[#5865F2]/60 hover:bg-[#5865F2]/18"
+              >
+                <DiscordIcon className="h-4 w-4" />
+                Discord Community
+              </a>
+
+              <a
+                href="https://github.com/AlphaAvatar/AlphaAvatar/discussions"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-5 py-2.5 text-sm font-medium text-white/80 transition hover:border-violet-400/35 hover:bg-white/[0.065]"
+              >
+                <GitHubIcon className="h-4 w-4" />
+                GitHub Discussions
+              </a>
+            </div>
           </div>
         </section>
 
